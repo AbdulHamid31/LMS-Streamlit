@@ -8,6 +8,11 @@ st.title("🎓 Learning Management System Mahasiswa")
 
 # Sidebar menu navigasi
 st.sidebar.header("🔍 Navigasi")
+# 🔐 Login Mahasiswa
+st.sidebar.header("🔐 Login Mahasiswa")
+nama = st.sidebar.text_input("Masukkan Nama Mahasiswa")
+nim = st.sidebar.text_input("Masukkan NIM Mahasiswa")
+
 menu = st.sidebar.radio("Pilih Halaman", ["Beranda", "Materi", "Tugas", "Prediksi Dropout"])
 
 # Halaman Beranda
