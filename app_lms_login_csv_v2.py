@@ -1,43 +1,79 @@
-
 import streamlit as st
 import pandas as pd
-import shap
-import pickle
-import matplotlib.pyplot as plt
 
-# Load model dan data
-model = pickle.load(open("model_xgb.pkl", "rb"))
-data = pd.read_csv("dataset_mahasiswa_812.csv")
+st.set_page_config(page_title="LMS Mahasiswa", layout="wide")
 
-# Encode status_akademik_terakhir
-data['status_akademik_terakhir'] = data['status_akademik_terakhir'].map({
-    'IPK < 2.5': 0, 'IPK 2.5 - 3.0': 1, 'IPK > 3.0': 2
-})
+@st.cache_data
+def load_data():
+    df = pd.read_csv("dataset_mahasiswa_812.csv")
+    return df
 
-# Sidebar - Pilih Mahasiswa
-st.sidebar.title("Prediksi Dropout Mahasiswa")
-selected = st.sidebar.selectbox("Pilih Mahasiswa", data["Nama"])
-mahasiswa = data[data["Nama"] == selected]
+df = load_data()
 
-# Tampilkan informasi
-st.title("Hasil Prediksi Dropout")
-st.write("**Nama Mahasiswa:**", selected)
+# 🔐 Login Mahasiswa
+st.sidebar.header("🔐 Login Mahasiswa")
+nama_list = df["Nama"].unique().tolist()
+nama = st.sidebar.selectbox("Pilih Nama Mahasiswa", nama_list)
+nim_input = st.sidebar.text_input("Masukkan NIM Mahasiswa")
 
-# Persiapkan data untuk prediksi
-X = mahasiswa.drop(columns=["ID Mahasiswa", "Nama", "dropout"])
+# Bantu login → tampilkan daftar NIM & Nama
+with st.sidebar.expander("📋 Lihat Daftar Nama & NIM Mahasiswa"):
+    st.dataframe(df[["ID Mahasiswa", "Nama"]].rename(columns={"ID Mahasiswa": "NIM"}))
 
-# Prediksi
-prediksi = model.predict(X)[0]
-proba = model.predict_proba(X)[0][1]
+# Validasi Nama dan NIM
+valid_mahasiswa = df[df["Nama"] == nama]
+if not valid_mahasiswa.empty:
+    nim_terdaftar = str(valid_mahasiswa.iloc[0]["ID Mahasiswa"])
+    login_berhasil = (nim_input == nim_terdaftar)
+else:
+    login_berhasil = False
 
-st.write("**Status Prediksi:**", "Dropout" if prediksi == 1 else "Tidak Dropout")
-st.write("**Probabilitas Risiko Dropout:**", f"{proba:.2%}")
+# ✅ Jika login cocok
+if login_berhasil:
+    st.title(f"🎓 LMS Mahasiswa - {nama}")
+    menu = st.sidebar.radio("Navigasi", ["Beranda", "Materi", "Tugas", "Prediksi Dropout"])
 
-# Interpretasi dengan SHAP
-st.subheader("Penjelasan Prediksi (Visualisasi SHAP)")
-explainer = shap.Explainer(model)
-shap_values = explainer(X)
+    if menu == "Beranda":
+        st.subheader(f"👋 Selamat Datang, {nama}!")
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Status Login", "Aktif")
+        col2.metric("IPK Terakhir", "3.25")
+        col3.metric("Kemajuan Kelas", "70%")
+        st.progress(0.7)
 
-fig = shap.plots.waterfall(shap_values[0], show=False)
-st.set_option('deprecation.showPyplotGlobalUse', False)
-st.pyplot(fig)
+    elif menu == "Materi":
+        st.subheader("📘 Materi Pembelajaran")
+        with st.expander("Modul 1"):
+            st.markdown("📄 Pengantar Data")
+        with st.expander("Modul 2"):
+            st.markdown("🧠 Machine Learning Dasar")
+        with st.expander("Modul 3"):
+            st.markdown("📊 Evaluasi Model")
+
+    elif menu == "Tugas":
+        st.subheader("📝 Daftar Tugas")
+        tugas_data = pd.DataFrame({
+            "Judul": ["Tugas 1", "Tugas 2", "Tugas 3"],
+            "Status": ["✅ Selesai", "❌ Belum", "❌ Belum"],
+            "Deadline": ["2025-06-15", "2025-06-25", "2025-07-01"]
+        })
+        st.table(tugas_data)
+
+        st.markdown("### 📎 Upload Tugas")
+        uploaded = st.file_uploader("Upload file tugas (.pdf/.docx)", type=["pdf", "docx"])
+        if uploaded:
+            st.success(f"File '{uploaded.name}' berhasil diunggah!")
+
+    elif menu == "Prediksi Dropout":
+        st.subheader("📊 Prediksi Dropout Mahasiswa (Simulasi)")
+        st.metric("Probabilitas Dropout", "8.42%")
+        st.success("✅ Mahasiswa ini tidak berisiko dropout.")
+        st.markdown("Fitur-fitur yang memengaruhi prediksi:")
+        st.markdown("- Total Login: 43")
+        st.markdown("- Materi Selesai: 91")
+        st.markdown("- IPK: < 2.5")
+        st.markdown("- Durasi Akses: 58.6 jam")
+
+else:
+    st.title("🎓 LMS Mahasiswa")
+    st.warning("Nama atau NIM tidak cocok. Silakan periksa kembali atau lihat daftar di sidebar.")
