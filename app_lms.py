@@ -39,6 +39,11 @@ elif menu == "Tugas":
         "Deadline": ["2025-06-15", "2025-06-25", "2025-07-01"]
     })
     st.table(tugas_data)
+    st.markdown("### 📎 Upload Tugas")
+uploaded = st.file_uploader("Upload file tugas (.pdf/.docx)", type=["pdf", "docx"])
+if uploaded:
+    st.success(f"File '{uploaded.name}' berhasil diunggah!")
+
 
 # Halaman Prediksi Dropout
 elif menu == "Prediksi Dropout":
