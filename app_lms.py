@@ -3,7 +3,10 @@ import streamlit as st
 import pandas as pd
 
 st.set_page_config(page_title="LMS Mahasiswa", layout="wide")
-
+# 🔐 Simulasi Login Mahasiswa (TAMBAHKAN INI)
+st.sidebar.header("🔐 Login Mahasiswa")
+nama = st.sidebar.text_input("Masukkan Nama Mahasiswa")
+nim = st.sidebar.text_input("Masukkan NIM Mahasiswa")
 st.title("🎓 Learning Management System Mahasiswa")
 
 # Sidebar menu navigasi
