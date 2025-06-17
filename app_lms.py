@@ -3,19 +3,33 @@ import pandas as pd
 
 st.set_page_config(page_title="LMS Mahasiswa", layout="wide")
 
-# 🔐 Simulasi Login Mahasiswa
+# Load dataset mahasiswa
+@st.cache_data
+def load_data():
+    df = pd.read_csv("dataset_mahasiswa_812.csv")
+    return df
+
+df = load_data()
+
+# 🔐 Login dari CSV
 st.sidebar.header("🔐 Login Mahasiswa")
-nama = st.sidebar.text_input("Masukkan Nama Mahasiswa")
-nim = st.sidebar.text_input("Masukkan NIM Mahasiswa")
+nama_list = df["Nama"].unique().tolist()
+nama = st.sidebar.selectbox("Pilih Nama Mahasiswa", nama_list)
+nim_input = st.sidebar.text_input("Masukkan NIM Mahasiswa")
 
-# Tampilkan seluruh isi aplikasi jika sudah login
-if nama and nim:
+# Validasi Nama & NIM
+valid_mahasiswa = df[df["Nama"] == nama]
+if not valid_mahasiswa.empty:
+    nim_terdaftar = str(valid_mahasiswa.iloc[0]["ID Mahasiswa"])  # dianggap NIM
+    login_berhasil = (nim_input == nim_terdaftar)
+else:
+    login_berhasil = False
+
+# ✅ Jika login berhasil
+if login_berhasil:
     st.title(f"🎓 LMS Mahasiswa - {nama}")
-
-    # Menu Navigasi LMS
     menu = st.sidebar.radio("Navigasi", ["Beranda", "Materi", "Tugas", "Prediksi Dropout"])
 
-    # Halaman Beranda
     if menu == "Beranda":
         st.subheader(f"👋 Selamat Datang, {nama}!")
         col1, col2, col3 = st.columns(3)
@@ -24,17 +38,15 @@ if nama and nim:
         col3.metric("Kemajuan Kelas", "70%")
         st.progress(0.7)
 
-    # Halaman Materi
     elif menu == "Materi":
         st.subheader("📘 Materi Pembelajaran")
-        with st.expander("Modul 1 - Pengantar Data"):
-            st.markdown("📄 Materi ini membahas tentang pengantar data, bentuk, dan struktur.")
-        with st.expander("Modul 2 - Machine Learning"):
-            st.markdown("🧠 Pembahasan supervised dan unsupervised learning.")
-        with st.expander("Modul 3 - Evaluasi Model"):
-            st.markdown("📊 Precision, Recall, F1-score, dan confusion matrix.")
+        with st.expander("Modul 1"):
+            st.markdown("📄 Pengantar Data")
+        with st.expander("Modul 2"):
+            st.markdown("🧠 Machine Learning Dasar")
+        with st.expander("Modul 3"):
+            st.markdown("📊 Evaluasi Model")
 
-    # Halaman Tugas
     elif menu == "Tugas":
         st.subheader("📝 Daftar Tugas")
         tugas_data = pd.DataFrame({
@@ -49,12 +61,11 @@ if nama and nim:
         if uploaded:
             st.success(f"File '{uploaded.name}' berhasil diunggah!")
 
-    # Halaman Prediksi Dropout (simulasi)
     elif menu == "Prediksi Dropout":
         st.subheader("📊 Prediksi Dropout Mahasiswa (Simulasi)")
         st.metric("Probabilitas Dropout", "8.42%")
         st.success("✅ Mahasiswa ini tidak berisiko dropout.")
-        st.markdown("Fitur-fitur yang memengaruhi prediksi:")
+        st.markdown("Fitur yang mempengaruhi prediksi:")
         st.markdown("- Total Login: 43")
         st.markdown("- Materi Selesai: 91")
         st.markdown("- IPK: < 2.5")
@@ -62,4 +73,4 @@ if nama and nim:
 
 else:
     st.title("🎓 LMS Mahasiswa")
-    st.warning("Silakan masukkan nama dan NIM mahasiswa untuk mengakses konten LMS.")
+    st.warning("Nama atau NIM tidak cocok. Silakan login kembali.")
