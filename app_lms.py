@@ -33,16 +33,21 @@ elif menu == "Materi":
 # Halaman Tugas
 elif menu == "Tugas":
     st.subheader("📝 Daftar Tugas")
+
+    # ➤ Daftar tugas mahasiswa
     tugas_data = pd.DataFrame({
         "Judul": ["Tugas 1", "Tugas 2", "Tugas 3"],
         "Status": ["✅ Selesai", "❌ Belum", "❌ Belum"],
         "Deadline": ["2025-06-15", "2025-06-25", "2025-07-01"]
     })
     st.table(tugas_data)
+
+    # ➤ Upload tugas (HANYA muncul di halaman Tugas)
     st.markdown("### 📎 Upload Tugas")
-uploaded = st.file_uploader("Upload file tugas (.pdf/.docx)", type=["pdf", "docx"])
-if uploaded:
-    st.success(f"File '{uploaded.name}' berhasil diunggah!")
+    uploaded = st.file_uploader("Upload file tugas (.pdf/.docx)", type=["pdf", "docx"])
+    if uploaded:
+        st.success(f"File '{uploaded.name}' berhasil diunggah!")
+
 
 
 # Halaman Prediksi Dropout
