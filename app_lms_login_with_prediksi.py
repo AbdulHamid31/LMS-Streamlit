@@ -76,20 +76,25 @@ else:
         else:
             st.success("✅ Mahasiswa ini diprediksi tidak dropout.")
 
-        # 📈 Visualisasi SHAP
-        st.subheader("📈 Visualisasi SHAP - Pengaruh Fitur terhadap Prediksi")
-        explainer = shap.TreeExplainer(model)
-        shap_values = explainer.shap_values(X)
+      # 📈 Visualisasi SHAP
+st.subheader("📈 Visualisasi SHAP - Pengaruh Fitur terhadap Prediksi")
 
-        plt.figure(figsize=(10, 4))
-        shap.plots.bar(shap.Explanation(
-            values=shap_values,
-            base_values=explainer.expected_value,
-            data=X,
-            feature_names=fitur
-        ))
-        st.pyplot(plt.gcf())
-        plt.clf()
+import shap
+import matplotlib.pyplot as plt
+
+explainer = shap.TreeExplainer(model)
+shap_values = explainer.shap_values(X)
+
+plt.figure(figsize=(10, 4))
+shap.plots.bar(shap.Explanation(
+    values=shap_values,
+    base_values=explainer.expected_value,
+    data=X,
+    feature_names=X.columns.tolist()
+))
+st.pyplot(plt.gcf())
+plt.clf()
+
     else:
         st.warning("Data mahasiswa tidak ditemukan.")
 
