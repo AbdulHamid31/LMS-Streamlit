@@ -1,4 +1,6 @@
-streamlit
-pandas
 shap
 matplotlib
+pandas
+xgboost
+scikit-learn
+streamlit
