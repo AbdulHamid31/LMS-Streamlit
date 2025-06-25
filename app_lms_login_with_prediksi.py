@@ -112,18 +112,11 @@ else:
                 st.success("✅ Mahasiswa ini diprediksi tidak dropout.")
 
             st.markdown("---")
-            st.subheader("📈 Visualisasi SHAP - Faktor yang Mempengaruhi Prediksi")
+            st.subheader("📈 Visualisasi SHAP (Waterfall Plot)")
 
-            explainer = shap.TreeExplainer(model)
-            shap_values = explainer.shap_values(X)
-
-            plt.figure(figsize=(10, 4))
-            shap.plots.bar(shap.Explanation(
-                values=shap_values,
-                base_values=explainer.expected_value,
-                data=X,
-                feature_names=X.columns.tolist()
-            ))
+            explainer = shap.Explainer(model)
+            shap_values = explainer(X)
+            shap.plots.waterfall(shap_values[0])
             st.pyplot(plt.gcf())
             plt.clf()
 
