@@ -90,106 +90,39 @@ if login_berhasil:
             st.success(f"File '{uploaded.name}' berhasil diunggah!")
 
     elif menu == "Prediksi Dropout":
-        st.subheader("📊 Prediksi Dropout Mahasiswa")
-        
-        # Data mahasiswa yang login
-        mhs_data = valid_mahasiswa.iloc[0]
-        
-        # 1. Tampilkan profil akademik
-        st.markdown("### Profil Akademik")
-        col1, col2, col3, col4 = st.columns(4)
-        col1.metric("Total Login", mhs_data["total_login"])
-        col2.metric("Materi Selesai", f"{mhs_data['materi_selesai']}%")
-        col3.metric("Skor Kuis Rata-rata", f"{mhs_data['skor_kuis_rata2']:.2f}")
-        col4.metric("Durasi Akses (jam)", f"{mhs_data['durasi_total_akses']:.1f}")
-        
-        # 2. Prediksi Dropout
-        st.markdown("## Probabilitas Dropout")
-        
-        try:
-            # Persiapkan data untuk modeling
-            features = [
-                'total_login', 'materi_selesai', 'skor_kuis_rata2', 
-                'partisipasi_forum', 'durasi_total_akses', 'interaksi_mingguan',
-                'jumlah_tugas_dikumpulkan', 'frekuensi_kuis', 'aktivitas_mobile',
-                'status_akademik_numerik'
-            ]
-            
-            X = df[features]
-            y = df['dropout']
-            
-            # Bagi data dan train model
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=0.2, random_state=42
-            )
-            
-            model = RandomForestClassifier(
-                n_estimators=100,
-                max_depth=5,
-                random_state=42,
-                class_weight='balanced'
-            )
-            model.fit(X_train, y_train)
-            
-            # Prediksi untuk mahasiswa ini
-            input_data = mhs_data[features].values.reshape(1, -1)
-            proba = model.predict_proba(input_data)[0][1] * 100  # Probabilitas dropout
-            
-            # Tampilkan hasil prediksi
-            st.markdown(f"<h1 style='font-size: 48px;'>{proba:.2f}%</h1>", unsafe_allow_html=True)
-            
-            if proba < 15:
-                st.success("✅ Risiko rendah - Kemungkinan kecil untuk dropout")
-            elif proba < 40:
-                st.warning("⚠ Risiko sedang - Perlu perhatian")
+        st.subheader("📊 Hasil Prediksi Dropout")
+        mahasiswa = df[df["Nama"] == nama]
+
+        if not mahasiswa.empty:
+            X = mahasiswa.drop(columns=["ID Mahasiswa", "Nama", "NIM", "dropout"])
+            proba = model.predict_proba(X)[0][1]
+            pred = model.predict(X)[0]
+
+            st.metric("Probabilitas Dropout", f"{proba:.2%}")
+            if pred == 1:
+                st.error("❌ Mahasiswa ini diprediksi berisiko dropout.")
             else:
-                st.error("❌ Risiko tinggi - Perlu intervensi")
-            
-            # 3. SHAP Explanation
-            st.subheader("Penjelasan Prediksi (SHAP)")
-            
-            # Hitung SHAP values
-            explainer = shap.TreeExplainer(model)
-            shap_values = explainer.shap_values(input_data)
-            
-            # Waterfall plot untuk penjelasan individual
-            st.markdown("### Kontribusi Fitur untuk Prediksi Ini")
-            fig, ax = plt.subplots()
-            shap.plots._waterfall.waterfall_legacy(
-                explainer.expected_value[1], 
-                shap_values[1][0], 
-                feature_names=features,
-                max_display=10
-            )
-            st.pyplot(fig)
+                st.success("✅ Mahasiswa ini diprediksi tidak dropout.")
+
+            st.markdown("---")
+            st.subheader("📈 Visualisasi SHAP (Waterfall Plot)")
+
+            explainer = shap.Explainer(model)
+            shap_values = explainer(X)
+            shap.plots.waterfall(shap_values[0])
+            st.pyplot(plt.gcf())
             plt.clf()
-            
-            # Summary plot untuk semua data
-            st.markdown("### Pola Umum Prediksi Dropout (Berdasarkan Seluruh Data)")
+
+            st.markdown("---")
+            st.subheader("📊 Distribusi Dropout Keseluruhan")
+            dropout_counts = df['dropout'].value_counts()
+            labels = ['Tidak Dropout', 'Dropout']
+            colors = ['#28a745', '#dc3545']
+
             fig, ax = plt.subplots()
-            shap.summary_plot(
-                shap_values, 
-                X_test, 
-                plot_type="bar",
-                feature_names=features,
-                show=False
-            )
+            ax.pie(dropout_counts, labels=labels, autopct='%1.1f%%', startangle=90, colors=colors)
+            ax.axis('equal')
             st.pyplot(fig)
-            plt.clf()
-            
-            # Interpretasi fitur penting
-            st.markdown("### Interpretasi Fitur Penting")
-            st.write("""
-            - **Total Login**: Semakin sering login, risiko dropout semakin rendah
-            - **Materi Selesai**: Persentase materi yang diselesaikan berpengaruh negatif terhadap dropout
-            - **Skor Kuis**: Nilai rata-rata kuis yang tinggi mengurangi risiko dropout
-            - **Status Akademik**: Mahasiswa dengan IPK lebih tinggi cenderung tidak dropout
-            - **Durasi Akses**: Waktu akses sistem yang lebih lama berkorelasi dengan risiko dropout lebih rendah
-            """)
-            
-        except Exception as e:
-            st.error(f"Terjadi error dalam prediksi: {str(e)}")
-            st.info("Pastikan data yang digunakan sudah sesuai format")
 
 else:
     st.title("🎓 LMS Mahasiswa")
