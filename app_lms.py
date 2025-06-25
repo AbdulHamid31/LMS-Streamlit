@@ -86,7 +86,7 @@ if login_berhasil:
         else:
             st.error("⚠️ Mahasiswa ini berisiko tinggi untuk dropout.")
     
-        # Fitur penting manual (simulasi/tampilan dummy)
+        # Fitur penting manual
         st.markdown("### Fitur yang mempengaruhi prediksi:")
         fitur_utama = [
             f"- Total Login: {int(data_mahasiswa['Total Login'])}",
@@ -104,6 +104,7 @@ if login_berhasil:
         plt.clf()
         shap.plots.waterfall(shap_values[0], show=False)
         st.pyplot(plt.gcf())
+
 
 
 
