@@ -86,7 +86,7 @@ if login_berhasil:
         shap_path = f"shap_plots/{nim_input}.png"  # File sesuai NIM login, contoh: MHS0001.png
 
         try:
-            st.image(shap_path, caption="Visualisasi SHAP Mahasiswa", use_column_width=True)
+            st.image(shap_path, caption="Visualisasi SHAP Mahasiswa", use_container_width=True)
         except:
             st.warning("⚠️ Visualisasi SHAP belum tersedia untuk mahasiswa ini.")
 
