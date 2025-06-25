@@ -86,27 +86,6 @@ if login_berhasil:
         else:
             st.error("⚠️ Mahasiswa ini berisiko tinggi untuk dropout.")
     
-        # Fitur penting manual
-        st.markdown("### Fitur yang mempengaruhi prediksi:")
-        fitur_utama = [
-            f"- Total Login: {int(data_mahasiswa['Total Login'])}",
-            f"- Materi Selesai: {int(data_mahasiswa['Materi Selesai'])}",
-            f"- IPK: {float(data_mahasiswa['IPK'])}",
-            f"- Durasi Akses: {float(data_mahasiswa['Durasi Akses'])} jam"
-        ]
-        st.markdown("\n".join(fitur_utama))
-    
-        # Visualisasi SHAP
-        st.subheader("Penjelasan Prediksi (Visualisasi SHAP)")
-        explainer = shap.Explainer(model)
-        shap_values = explainer(X)
-    
-        plt.clf()
-        shap.plots.waterfall(shap_values[0], show=False)
-        st.pyplot(plt.gcf())
-
-
-
 
 else:
     st.title("🎓 LMS Mahasiswa")
