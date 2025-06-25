@@ -62,33 +62,49 @@ if login_berhasil:
             st.success(f"File '{uploaded.name}' berhasil diunggah!")
 
     elif menu == "Prediksi Dropout":
-        st.subheader("📊 Prediksi Dropout Mahasiswa (Simulasi)")
+    st.subheader("📊 Prediksi Dropout Mahasiswa (Simulasi)")
 
-        # 📌 Probabilitas Dropout - angkanya bisa kamu ambil dari model
-        st.markdown("## Probabilitas Dropout")
-        st.markdown("<h1 style='font-size: 48px;'>1.16%</h1>", unsafe_allow_html=True)
+    import shap
+    import pickle
+    import matplotlib.pyplot as plt
 
+    # Load model
+    model = pickle.load(open("model_xgb.pkl", "rb"))
+
+    # Ambil data fitur mahasiswa yang login
+    data_mahasiswa = df[df["Nama"] == nama]
+    fitur_model = data_mahasiswa.drop(columns=["Nama", "ID Mahasiswa"])
+    X = fitur_model
+
+    # Probabilitas prediksi dari model
+    probas = model.predict_proba(X)[0][1] * 100
+    st.markdown("## Probabilitas Dropout")
+    st.markdown(f"<h1 style='font-size: 48px;'>{probas:.2f}%</h1>", unsafe_allow_html=True)
+
+    if probas < 30:
         st.success("✅ Mahasiswa ini sangat kecil kemungkinannya untuk dropout.")
+    else:
+        st.error("⚠️ Mahasiswa ini berisiko tinggi untuk dropout.")
 
-        # 🧠 Fitur yang mempengaruhi prediksi
-        st.markdown("### Fitur yang mempengaruhi prediksi:")
-        fitur_utama = [
-            "- Total Login: 43",
-            "- Materi Selesai: 91",
-            "- IPK: < 2.5",
-            "- Durasi Akses: 58.6 jam"
-        ]
-        st.markdown("\n".join(fitur_utama))
+    # Fitur penting manual (simulasi/tampilan dummy)
+    st.markdown("### Fitur yang mempengaruhi prediksi:")
+    fitur_utama = [
+        f"- Total Login: {int(data_mahasiswa['Total Login'])}",
+        f"- Materi Selesai: {int(data_mahasiswa['Materi Selesai'])}",
+        f"- IPK: {float(data_mahasiswa['IPK'])}",
+        f"- Durasi Akses: {float(data_mahasiswa['Durasi Akses'])} jam"
+    ]
+    st.markdown("\n".join(fitur_utama))
 
-      # Interpretasi dengan SHAP
-        st.subheader("Penjelasan Prediksi (Visualisasi SHAP)")
-        explainer = shap.Explainer(model)
-        shap_values = explainer(X)
+    # Visualisasi SHAP
+    st.subheader("Penjelasan Prediksi (Visualisasi SHAP)")
+    explainer = shap.Explainer(model)
+    shap_values = explainer(X)
 
-        shap.plots.waterfall(shap_values[0])
-        st.pyplot(plt.gcf())
+    plt.clf()
+    shap.plots.waterfall(shap_values[0], show=False)
+    st.pyplot(plt.gcf())
 
-        import matplotlib.pyplot as plt
 
 
 else:
