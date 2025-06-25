@@ -80,15 +80,15 @@ if login_berhasil:
         ]
         st.markdown("\n".join(fitur_utama))
 
-        # 📊 Visualisasi SHAP
-        st.markdown("### Penjelasan Prediksi (Visualisasi SHAP)")
+      # Interpretasi dengan SHAP
+        st.subheader("Penjelasan Prediksi (Visualisasi SHAP)")
+        explainer = shap.Explainer(model)
+        shap_values = explainer(X)
 
-        shap_path = f"shap_plots/{nim_input}.png"  # File sesuai NIM login, contoh: MHS0001.png
+        shap.plots.waterfall(shap_values[0])
+        st.pyplot(plt.gcf())
 
-        try:
-            st.image(shap_path, caption="Visualisasi SHAP Mahasiswa", use_container_width=True)
-        except:
-            st.warning("⚠️ Visualisasi SHAP belum tersedia untuk mahasiswa ini.")
+        import matplotlib.pyplot as plt
 
 
 else:
