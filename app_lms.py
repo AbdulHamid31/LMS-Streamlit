@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 st.set_page_config(page_title="LMS Mahasiswa", layout="wide")
 
 # Disable PyplotGlobalUse warning
-st.set_option('deprecation.showPyplotGlobalUse', False)
+
 
 # Load student dataset
 @st.cache_data
