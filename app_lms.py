@@ -1,96 +1,137 @@
 import streamlit as st
 import pandas as pd
+import shap
+import pickle
+import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="LMS Mahasiswa", layout="wide")
+# ============================
+# === LOAD MODEL & DATASET ===
+# ============================
 
-# Load dataset mahasiswa
+@st.cache_resource
+def load_model():
+    return pickle.load(open("model_xgb.pkl", "rb"))
+
 @st.cache_data
 def load_data():
-    df = pd.read_csv("dataset_mahasiswa_812.csv")
+    df = pd.read_csv("dataset_mahasiswa.csv")  # Pastikan nama file sesuai
+    df['status_akademik_terakhir'] = df['status_akademik_terakhir'].map({
+        'IPK < 2.5': 0,
+        'IPK 2.5 - 3.0': 1,
+        'IPK > 3.0': 2
+    })
     return df
 
-df = load_data()
+model = load_model()
+data = load_data()
 
-# 🔐 Login dari CSV
-st.sidebar.header("🔐 Login Mahasiswa")
-nama_list = df["Nama"].unique().tolist()
-nama = st.sidebar.selectbox("Pilih Nama Mahasiswa", nama_list)
-nim_input = st.sidebar.text_input("Masukkan NIM Mahasiswa")
+# ===================
+# === LOGIN SYSTEM ==
+# ===================
 
-# Validasi Nama & NIM
-valid_mahasiswa = df[df["Nama"] == nama]
-if not valid_mahasiswa.empty:
-    nim_terdaftar = str(valid_mahasiswa.iloc[0]["ID Mahasiswa"])  # dianggap NIM
-    login_berhasil = (nim_input == nim_terdaftar)
-else:
-    login_berhasil = False
+def login():
+    st.sidebar.title("🔐 Login Mahasiswa")
+    nama_list = data["Nama"].unique()
+    selected_nama = st.sidebar.selectbox("Pilih Nama Mahasiswa", nama_list)
+    nim = st.sidebar.text_input("Masukkan NIM Mahasiswa", type="password")
 
-# ✅ Jika login berhasil
-if login_berhasil:
-    st.title(f"🎓 LMS Mahasiswa - {nama}")
-    menu = st.sidebar.radio("Navigasi", ["Beranda", "Materi", "Tugas", "Prediksi Dropout"])
-
-    if menu == "Beranda":
-        st.subheader(f"👋 Selamat Datang, {nama}!")
-        col1, col2, col3 = st.columns(3)
-        col1.metric("Status Login", "Aktif")
-        col2.metric("IPK Terakhir", "3.25")
-        col3.metric("Kemajuan Kelas", "70%")
-        st.progress(0.7)
-
-    elif menu == "Materi":
-        st.subheader("📘 Materi Pembelajaran")
-        with st.expander("Modul 1"):
-            st.markdown("📄 Pengantar Data")
-        with st.expander("Modul 2"):
-            st.markdown("🧠 Machine Learning Dasar")
-        with st.expander("Modul 3"):
-            st.markdown("📊 Evaluasi Model")
-
-    elif menu == "Tugas":
-        st.subheader("📝 Daftar Tugas")
-        tugas_data = pd.DataFrame({
-            "Judul": ["Tugas 1", "Tugas 2", "Tugas 3"],
-            "Status": ["✅ Selesai", "❌ Belum", "❌ Belum"],
-            "Deadline": ["2025-06-15", "2025-06-25", "2025-07-01"]
-        })
-        st.table(tugas_data)
-
-        st.markdown("### 📎 Upload Tugas")
-        uploaded = st.file_uploader("Upload file tugas (.pdf/.docx)", type=["pdf", "docx"])
-        if uploaded:
-            st.success(f"File '{uploaded.name}' berhasil diunggah!")
-
-    elif menu == "Prediksi Dropout":
-        st.subheader("📊 Prediksi Dropout Mahasiswa (Simulasi)")
-
-        # 📌 Probabilitas Dropout - angkanya bisa kamu ambil dari model
-        st.markdown("## Probabilitas Dropout")
-        st.markdown("<h1 style='font-size: 48px;'>1.16%</h1>", unsafe_allow_html=True)
-
-        st.success("✅ Mahasiswa ini sangat kecil kemungkinannya untuk dropout.")
-
-        # 🧠 Fitur yang mempengaruhi prediksi
-        st.markdown("### Fitur yang mempengaruhi prediksi:")
-        fitur_utama = [
-            "- Total Login: 43",
-            "- Materi Selesai: 91",
-            "- IPK: < 2.5",
-            "- Durasi Akses: 58.6 jam"
+    if st.sidebar.button("Login"):
+        user_row = data[
+            (data["Nama"] == selected_nama) &
+            (data["ID Mahasiswa"].astype(str) == nim)
         ]
-        st.markdown("\n".join(fitur_utama))
+        if not user_row.empty:
+            st.session_state["logged_in"] = True
+            st.session_state["username"] = selected_nama
+            st.session_state["user_data"] = user_row
+            st.rerun()
+        else:
+            st.sidebar.error("❌ NIM tidak cocok dengan nama yang dipilih.")
 
-      # Interpretasi dengan SHAP
-        st.subheader("Penjelasan Prediksi (Visualisasi SHAP)")
-        explainer = shap.Explainer(model)
-        shap_values = explainer(X)
+if "logged_in" not in st.session_state:
+    st.session_state["logged_in"] = False
 
-        shap.plots.waterfall(shap_values[0])
-        st.pyplot(plt.gcf())
+if not st.session_state["logged_in"]:
+    login()
+    st.stop()
 
-        import matplotlib.pyplot as plt
+# =====================
+# === SIDEBAR MENU ====
+# =====================
 
+st.sidebar.success(f"Login sebagai {st.session_state['username']}")
+menu = st.sidebar.radio("📚 Menu Navigasi", ["Dashboard", "Prediksi Dropout & Visualisasi", "Logout"])
 
-else:
-    st.title("🎓 LMS Mahasiswa")
-    st.warning("Nama atau NIM tidak cocok. Silakan login kembali.")
+# ====================
+# ==== DASHBOARD =====
+# ====================
+
+if menu == "Dashboard":
+    st.title("🎓 Dashboard LMS Mahasiswa")
+    st.markdown("Selamat datang di sistem prediksi risiko dropout mahasiswa.")
+    mahasiswa = st.session_state["user_data"].iloc[0]
+
+    st.markdown("### 👤 Informasi Mahasiswa")
+    st.write("**Nama:**", mahasiswa["Nama"])
+    st.write("**ID Mahasiswa:**", mahasiswa["ID Mahasiswa"])
+    st.write("**Status Akademik Terakhir:**", mahasiswa["status_akademik_terakhir"])
+
+    st.markdown("---")
+    st.dataframe(data[["Nama", "status_akademik_terakhir", "dropout"]].sample(5), use_container_width=True)
+
+# ================================================
+# === GABUNG: PREDIKSI DROPOUT & VISUALISASI =====
+# ================================================
+
+elif menu == "Prediksi Dropout & Visualisasi":
+    st.title("🧠 Prediksi & Visualisasi Risiko Dropout")
+
+    # ===== Prediksi =====
+    st.subheader("🤖 Hasil Prediksi")
+    mahasiswa = st.session_state["user_data"]
+    nama = mahasiswa["Nama"].values[0]
+    st.write("**Nama Mahasiswa:**", nama)
+
+    X = mahasiswa.drop(columns=["ID Mahasiswa", "Nama", "dropout"])
+    prediksi = model.predict(X)[0]
+    proba = model.predict_proba(X)[0][1]
+
+    st.write("**Status Prediksi:**", "Dropout" if prediksi == 1 else "Tidak Dropout")
+    st.write("**Probabilitas Risiko Dropout:**", f"{proba:.2%}")
+
+    if proba < 0.2:
+        st.success("✅ Mahasiswa ini sangat kecil kemungkinannya untuk dropout.")
+    elif proba > 0.7:
+        st.error("⚠️ Mahasiswa ini berisiko tinggi dropout.")
+    else:
+        st.warning("⚠️ Mahasiswa ini memiliki kemungkinan dropout sedang.")
+
+    # ===== SHAP =====
+    st.markdown("---")
+    st.subheader("📊 Visualisasi SHAP (Penjelasan Prediksi)")
+
+    explainer = shap.Explainer(model)
+    shap_values = explainer(X)
+    shap.plots.waterfall(shap_values[0])
+    st.pyplot(plt.gcf())
+
+    # ===== Pie Chart Distribusi =====
+    st.markdown("---")
+    st.subheader("📈 Distribusi Dropout Mahasiswa")
+
+    dropout_counts = data['dropout'].value_counts()
+    labels = ['Tidak Dropout', 'Dropout']
+    colors = ['#28a745', '#dc3545']
+
+    fig1, ax1 = plt.subplots()
+    ax1.pie(dropout_counts, labels=labels, autopct='%1.1f%%', startangle=90, colors=colors)
+    ax1.axis('equal')
+    st.pyplot(fig1)
+
+# ====================
+# ===== LOGOUT =======
+# ====================
+
+elif menu == "Logout":
+    st.session_state.clear()
+    st.rerun()
