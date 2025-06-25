@@ -61,15 +61,35 @@ if login_berhasil:
         if uploaded:
             st.success(f"File '{uploaded.name}' berhasil diunggah!")
 
-    elif menu == "Prediksi Dropout":
+      elif menu == "Prediksi Dropout":
         st.subheader("📊 Prediksi Dropout Mahasiswa (Simulasi)")
-        st.metric("Probabilitas Dropout", "8.42%")
-        st.success("✅ Mahasiswa ini tidak berisiko dropout.")
-        st.markdown("Fitur yang mempengaruhi prediksi:")
-        st.markdown("- Total Login: 43")
-        st.markdown("- Materi Selesai: 91")
-        st.markdown("- IPK: < 2.5")
-        st.markdown("- Durasi Akses: 58.6 jam")
+
+        # 📌 Probabilitas Dropout - angkanya bisa kamu ambil dari model
+        st.markdown("## Probabilitas Dropout")
+        st.markdown("<h1 style='font-size: 48px;'>1.16%</h1>", unsafe_allow_html=True)
+
+        st.success("✅ Mahasiswa ini sangat kecil kemungkinannya untuk dropout.")
+
+        # 🧠 Fitur yang mempengaruhi prediksi
+        st.markdown("### Fitur yang mempengaruhi prediksi:")
+        fitur_utama = [
+            "- Total Login: 43",
+            "- Materi Selesai: 91",
+            "- IPK: < 2.5",
+            "- Durasi Akses: 58.6 jam"
+        ]
+        st.markdown("\n".join(fitur_utama))
+
+        # 📊 Visualisasi SHAP
+        st.markdown("### Penjelasan Prediksi (Visualisasi SHAP)")
+
+        shap_path = f"shap_plots/{nim_input}.png"  # File sesuai NIM login, contoh: MHS0001.png
+
+        try:
+            st.image(shap_path, caption="Visualisasi SHAP Mahasiswa", use_column_width=True)
+        except:
+            st.warning("⚠️ Visualisasi SHAP belum tersedia untuk mahasiswa ini.")
+
 
 else:
     st.title("🎓 LMS Mahasiswa")
