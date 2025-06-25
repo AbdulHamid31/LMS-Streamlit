@@ -1,31 +1,58 @@
 import streamlit as st
 import pandas as pd
+import pickle
+import xgboost as xgb
+import shap
+import matplotlib.pyplot as plt
 
+# Set page config
 st.set_page_config(page_title="LMS Mahasiswa", layout="wide")
 
-# Load dataset mahasiswa
+# Disable PyplotGlobalUse warning
+st.set_option('deprecation.showPyplotGlobalUse', False)
+
+# Load student dataset
 @st.cache_data
 def load_data():
     df = pd.read_csv("dataset_mahasiswa_812.csv")
     return df
 
-df = load_data()
+# Load XGBoost model
+@st.cache_resource
+def load_model():
+    try:
+        # Try loading as XGBoost model
+        model = xgb.Booster()
+        model.load_model('model_xgb (1) (1).pkl')
+        return model
+    except:
+        try:
+            # Try loading as pickle file
+            with open('model_xgb (1) (1).pkl', 'rb') as file:
+                model = pickle.load(file)
+                return model
+        except Exception as e:
+            st.error(f"Failed to load model: {str(e)}")
+            return None
 
-# 🔐 Login dari CSV
+df = load_data()
+model = load_model()
+
+# 🔐 Student Login
 st.sidebar.header("🔐 Login Mahasiswa")
 nama_list = df["Nama"].unique().tolist()
 nama = st.sidebar.selectbox("Pilih Nama Mahasiswa", nama_list)
 nim_input = st.sidebar.text_input("Masukkan NIM Mahasiswa")
 
-# Validasi Nama & NIM
+# Validate credentials
 valid_mahasiswa = df[df["Nama"] == nama]
 if not valid_mahasiswa.empty:
-    nim_terdaftar = str(valid_mahasiswa.iloc[0]["ID Mahasiswa"])  # dianggap NIM
+    nim_terdaftar = str(valid_mahasiswa.iloc[0]["ID Mahasiswa"])
     login_berhasil = (nim_input == nim_terdaftar)
 else:
     login_berhasil = False
 
-# ✅ Jika login berhasil
+# ✅ If login successful
 if login_berhasil:
     st.title(f"🎓 LMS Mahasiswa - {nama}")
     menu = st.sidebar.radio("Navigasi", ["Beranda", "Materi", "Tugas", "Prediksi Dropout"])
@@ -62,50 +89,80 @@ if login_berhasil:
             st.success(f"File '{uploaded.name}' berhasil diunggah!")
 
     elif menu == "Prediksi Dropout":
-        st.subheader("📊 Prediksi Dropout Mahasiswa (Simulasi)")
-    
-        # Ambil data mahasiswa yang login
-        mahasiswa_data = df[df["Nama"] == nama].iloc[0]
+        st.subheader("📊 Prediksi Dropout Mahasiswa")
         
-        # Siapkan fitur untuk prediksi (sesuaikan dengan fitur model Anda)
-        X_pred = pd.DataFrame({
-            'total_login': [mahasiswa_data['total_login']],
-            'materi_selesai': [mahasiswa_data['materi_selesai']],
-            'skor_kuis_rata2': [mahasiswa_data['skor_kuis_rata2']],
-            # ... tambahkan semua fitur yang diperlukan
-        })
-        
-        # Prediksi
-        proba = model.predict_proba(X_pred)[0][1] * 100  # Probabilitas dropout
-        prediksi = model.predict(X_pred)[0]
-        
-        # Tampilkan hasil
-        st.markdown("## Probabilitas Dropout")
-        st.markdown(f"<h1 style='font-size: 48px;'>{proba:.2f}%</h1>", unsafe_allow_html=True)
-        
-        if prediksi == 0:
-            st.success("✅ Mahasiswa ini sangat kecil kemungkinannya untuk dropout.")
-        else:
-            st.error("⚠️ Mahasiswa ini berisiko tinggi untuk dropout!")
-    
-        # Visualisasi SHAP
-        st.subheader("Penjelasan Prediksi (Visualisasi SHAP)")
+        if model is None:
+            st.error("Model tidak tersedia. Silakan hubungi administrator.")
+            st.stop()
         
         try:
-            explainer = shap.TreeExplainer(model)
-            shap_values = explainer.shap_values(X_pred)
+            # Get student data
+            mahasiswa_data = df[df["Nama"] == nama].iloc[0]
             
-            fig, ax = plt.subplots()
-            shap.summary_plot(shap_values, X_pred, show=False)
-            st.pyplot(fig)
+            # Prepare input features (adjust based on your model's features)
+            input_data = pd.DataFrame({
+                'total_login': [mahasiswa_data['total_login']],
+                'materi_selesai': [mahasiswa_data['materi_selesai']],
+                'skor_kuis_rata2': [mahasiswa_data['skor_kuis_rata2']],
+                'partisipasi_forum': [mahasiswa_data['partisipasi_forum']],
+                'durasi_total_akses': [mahasiswa_data['durasi_total_akses']],
+                'status_akademik_terakhir': [mahasiswa_data['status_akademik_terakhir']],
+                'interaksi_mingguan': [mahasiswa_data['interaksi_mingguan']],
+                'jumlah_tugas_dikumpulkan': [mahasiswa_data['jumlah_tugas_dikumpulkan']],
+                'frekuensi_kuis': [mahasiswa_data['frekuensi_kuis']],
+                'aktivitas_mobile': [mahasiswa_data['aktivitas_mobile']]
+            })
             
-            # Atau untuk waterfall plot:
-            # fig = shap.plots.waterfall(shap_values[0], show=False)
-            # st.pyplot(fig)
+            # Make prediction
+            if hasattr(model, 'predict_proba'):
+                # For scikit-learn style model
+                proba = model.predict_proba(input_data)[0][1] * 100
+            elif hasattr(model, 'predict'):
+                # For XGBoost booster
+                dmatrix = xgb.DMatrix(input_data)
+                proba = model.predict(dmatrix)[0] * 100
+            else:
+                st.error("Model tidak valid")
+                st.stop()
             
-            plt.close()
+            # Display results
+            st.markdown(f"## Probabilitas Dropout: {proba:.2f}%")
+            
+            if proba < 30:
+                st.success("✅ Risiko rendah - Mahasiswa aktif dan berprestasi")
+            elif proba < 60:
+                st.warning("⚠️ Risiko sedang - Perlu perhatian lebih")
+            else:
+                st.error("❌ Risiko tinggi - Segera lakukan intervensi")
+            
+            # Feature importance
+            st.subheader("Faktor yang Mempengaruhi Prediksi")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.metric("Total Login", mahasiswa_data['total_login'])
+                st.metric("Materi Diselesaikan", mahasiswa_data['materi_selesai'])
+                st.metric("Skor Kuis Rata-rata", f"{mahasiswa_data['skor_kuis_rata2']:.2f}")
+            
+            with col2:
+                st.metric("Durasi Akses", f"{mahasiswa_data['durasi_total_akses']:.1f} jam")
+                st.metric("Partisipasi Forum", mahasiswa_data['partisipasi_forum'])
+                st.metric("Tugas Dikumpulkan", mahasiswa_data['jumlah_tugas_dikumpulkan'])
+            
+            # SHAP Explanation (if available)
+            try:
+                st.subheader("Penjelasan Prediksi (SHAP)")
+                explainer = shap.TreeExplainer(model)
+                shap_values = explainer.shap_values(input_data)
+                
+                fig, ax = plt.subplots()
+                shap.summary_plot(shap_values, input_data, show=False)
+                st.pyplot(fig)
+                plt.close()
+            except Exception as e:
+                st.warning(f"Tidak dapat menampilkan penjelasan SHAP: {str(e)}")
+                
         except Exception as e:
-            st.error(f"Error dalam menampilkan SHAP: {str(e)}")
+            st.error(f"Terjadi kesalahan saat prediksi: {str(e)}")
 
 else:
     st.title("🎓 LMS Mahasiswa")
