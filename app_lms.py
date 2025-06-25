@@ -1,6 +1,11 @@
 import streamlit as st
 import pandas as pd
+import shap
+import matplotlib.pyplot as plt
+import pickle
+from PIL import Image
 
+# Set page config
 st.set_page_config(page_title="LMS Mahasiswa", layout="wide")
 
 # Load dataset mahasiswa
@@ -9,7 +14,15 @@ def load_data():
     df = pd.read_csv("dataset_mahasiswa_812.csv")
     return df
 
+# Load model (tambahkan ini)
+@st.cache_resource
+def load_model():
+    with open('model.pkl', 'rb') as file:
+        model = pickle.load(file)
+    return model
+
 df = load_data()
+model = load_model()  # Load model ML
 
 # 🔐 Login dari CSV
 st.sidebar.header("🔐 Login Mahasiswa")
@@ -64,10 +77,9 @@ if login_berhasil:
     elif menu == "Prediksi Dropout":
         st.subheader("📊 Prediksi Dropout Mahasiswa (Simulasi)")
 
-        # 📌 Probabilitas Dropout - angkanya bisa kamu ambil dari model
+        # 📌 Probabilitas Dropout
         st.markdown("## Probabilitas Dropout")
         st.markdown("<h1 style='font-size: 48px;'>1.16%</h1>", unsafe_allow_html=True)
-
         st.success("✅ Mahasiswa ini sangat kecil kemungkinannya untuk dropout.")
 
         # 🧠 Fitur yang mempengaruhi prediksi
@@ -80,16 +92,27 @@ if login_berhasil:
         ]
         st.markdown("\n".join(fitur_utama))
 
-      # Interpretasi dengan SHAP
+        # Interpretasi dengan SHAP (diperbaiki)
         st.subheader("Penjelasan Prediksi (Visualisasi SHAP)")
-        explainer = shap.Explainer(model)
-        shap_values = explainer(X)
-
-        shap.plots.waterfall(shap_values[0])
-        st.pyplot(plt.gcf())
-
-        import matplotlib.pyplot as plt
-
+        try:
+            # Contoh data untuk prediksi (sesuaikan dengan format input model Anda)
+            sample_data = pd.DataFrame({
+                'Total_Login': [43],
+                'Materi_Selesai': [91],
+                'IPK': [2.4],
+                'Durasi_Akses': [58.6]
+            })
+            
+            explainer = shap.Explainer(model)
+            shap_values = explainer(sample_data)
+            
+            fig, ax = plt.subplots()
+            shap.plots.waterfall(shap_values[0], max_display=10, show=False)
+            st.pyplot(fig)
+            
+        except Exception as e:
+            st.error(f"Terjadi error dalam visualisasi SHAP: {str(e)}")
+            st.info("Pastikan model dan data input sesuai dengan format yang diharapkan.")
 
 else:
     st.title("🎓 LMS Mahasiswa")
