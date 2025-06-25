@@ -63,33 +63,49 @@ if login_berhasil:
 
     elif menu == "Prediksi Dropout":
         st.subheader("📊 Prediksi Dropout Mahasiswa (Simulasi)")
-
-        # 📌 Probabilitas Dropout - angkanya bisa kamu ambil dari model
+    
+        # Ambil data mahasiswa yang login
+        mahasiswa_data = df[df["Nama"] == nama].iloc[0]
+        
+        # Siapkan fitur untuk prediksi (sesuaikan dengan fitur model Anda)
+        X_pred = pd.DataFrame({
+            'total_login': [mahasiswa_data['total_login']],
+            'materi_selesai': [mahasiswa_data['materi_selesai']],
+            'skor_kuis_rata2': [mahasiswa_data['skor_kuis_rata2']],
+            # ... tambahkan semua fitur yang diperlukan
+        })
+        
+        # Prediksi
+        proba = model.predict_proba(X_pred)[0][1] * 100  # Probabilitas dropout
+        prediksi = model.predict(X_pred)[0]
+        
+        # Tampilkan hasil
         st.markdown("## Probabilitas Dropout")
-        st.markdown("<h1 style='font-size: 48px;'>1.16%</h1>", unsafe_allow_html=True)
-
-        st.success("✅ Mahasiswa ini sangat kecil kemungkinannya untuk dropout.")
-
-        # 🧠 Fitur yang mempengaruhi prediksi
-        st.markdown("### Fitur yang mempengaruhi prediksi:")
-        fitur_utama = [
-            "- Total Login: 43",
-            "- Materi Selesai: 91",
-            "- IPK: < 2.5",
-            "- Durasi Akses: 58.6 jam"
-        ]
-        st.markdown("\n".join(fitur_utama))
-
-      # Interpretasi dengan SHAP
+        st.markdown(f"<h1 style='font-size: 48px;'>{proba:.2f}%</h1>", unsafe_allow_html=True)
+        
+        if prediksi == 0:
+            st.success("✅ Mahasiswa ini sangat kecil kemungkinannya untuk dropout.")
+        else:
+            st.error("⚠️ Mahasiswa ini berisiko tinggi untuk dropout!")
+    
+        # Visualisasi SHAP
         st.subheader("Penjelasan Prediksi (Visualisasi SHAP)")
-        explainer = shap.Explainer(model)
-        shap_values = explainer(X)
-
-        shap.plots.waterfall(shap_values[0])
-        st.pyplot(plt.gcf())
-
-        import matplotlib.pyplot as plt
-
+        
+        try:
+            explainer = shap.TreeExplainer(model)
+            shap_values = explainer.shap_values(X_pred)
+            
+            fig, ax = plt.subplots()
+            shap.summary_plot(shap_values, X_pred, show=False)
+            st.pyplot(fig)
+            
+            # Atau untuk waterfall plot:
+            # fig = shap.plots.waterfall(shap_values[0], show=False)
+            # st.pyplot(fig)
+            
+            plt.close()
+        except Exception as e:
+            st.error(f"Error dalam menampilkan SHAP: {str(e)}")
 
 else:
     st.title("🎓 LMS Mahasiswa")
