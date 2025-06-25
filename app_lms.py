@@ -23,12 +23,12 @@ def load_model():
     try:
         # Try loading as XGBoost model
         model = xgb.Booster()
-        model.load_model('model_xgb (1) (1).pkl')
+        model.load_model('model_xgb.pkl')
         return model
     except:
         try:
             # Try loading as pickle file
-            with open('model_xgb (1) (1).pkl', 'rb') as file:
+            with open('model_xgb.pkl', 'rb') as file:
                 model = pickle.load(file)
                 return model
         except Exception as e:
