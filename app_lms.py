@@ -1,8 +1,8 @@
 import streamlit as st
 import pandas as pd
-import pickle # Ditambahkan dari app_lms_final.py
-import shap # Ditambahkan dari app_lms_final.py
-import matplotlib.pyplot as plt # Ditambahkan dari app_lms_final.py
+import pickle
+import shap
+import matplotlib.pyplot as plt
 
 # Konfigurasi halaman
 st.set_page_config(page_title="LMS Mahasiswa", layout="wide")
@@ -10,7 +10,7 @@ st.set_page_config(page_title="LMS Mahasiswa", layout="wide")
 # Fungsi untuk load dataset dan model
 @st.cache_data
 def load_data():
-    # Diubah untuk memuat dataset_mahasiswa_812_with_nim.csv dan memetakan status_akademik_terakhir
+    # Menggunakan dataset_mahasiswa_812_with_nim.csv dan pemetaan status_akademik_terakhir
     df = pd.read_csv("dataset_mahasiswa_812_with_nim.csv")
     df['status_akademik_terakhir'] = df['status_akademik_terakhir'].map({
         'IPK < 2.5': 0, 'IPK 2.5 - 3.0': 1, 'IPK > 3.0': 2
@@ -25,7 +25,7 @@ def load_model():
 df = load_data()
 model = load_model()
 
-# Inisialisasi session state (dari app_lms_final.py untuk mempertahankan status login)
+# Inisialisasi session state (Penting untuk mempertahankan status login)
 if "login" not in st.session_state:
     st.session_state.login = False
 if "nama" not in st.session_state:
@@ -39,39 +39,39 @@ if not st.session_state.login:
     nama = st.sidebar.selectbox("Pilih Nama Mahasiswa", df["Nama"].unique().tolist())
     nim_input = st.sidebar.text_input("Masukkan NIM Mahasiswa")
 
-    with st.sidebar.expander("📋 Lihat Daftar NIM & Nama"): # Diubah agar lebih jelas
-        st.dataframe(df[["NIM", "Nama"]]) # Menampilkan kolom NIM
+    with st.sidebar.expander("📋 Lihat Daftar NIM & Nama"):
+        st.dataframe(df[["NIM", "Nama"]])
 
     valid_mahasiswa = df[df["Nama"] == nama]
     if not valid_mahasiswa.empty:
-        # Diubah untuk menggunakan kolom 'NIM' dari dataset
+        # Menggunakan kolom 'NIM' dari dataset untuk validasi
         nim_terdaftar = str(valid_mahasiswa.iloc[0]["NIM"])
         if nim_input == nim_terdaftar:
             st.session_state.login = True
             st.session_state.nama = nama
             st.session_state.nim = nim_input
             st.success("✅ Login berhasil!")
-            st.experimental_rerun() # Untuk memuat ulang halaman setelah login
+            st.experimental_rerun() # Memuat ulang halaman setelah login
         elif nim_input:
             st.error("❌ NIM tidak cocok.")
-else: # Ini adalah blok utama aplikasi setelah login berhasil (dari app_lms_final.py)
+else: # Ini adalah blok utama aplikasi setelah login berhasil
     nama = st.session_state.nama
     nim = st.session_state.nim
     st.title(f"🎓 LMS Mahasiswa - {nama}")
 
-    if st.sidebar.button("🔓 Logout"): # Tombol logout
+    if st.sidebar.button("🔓 Logout"):
         st.session_state.login = False
         st.session_state.nama = ""
         st.session_state.nim = ""
-        st.experimental_rerun() # Untuk memuat ulang halaman setelah logout
+        st.experimental_rerun()
 
     menu = st.sidebar.radio("Navigasi", ["Beranda", "Materi", "Tugas", "Prediksi Dropout"])
 
     if menu == "Beranda":
-        st.subheader("👋 Selamat Datang di Dashboard LMS!") # Diubah sedikit untuk konsistensi
+        st.subheader("👋 Selamat Datang di Dashboard LMS!")
         col1, col2, col3 = st.columns(3)
         col1.metric("Status Login", "Aktif")
-        col2.metric("NIM", nim) # Menampilkan NIM yang sudah login
+        col2.metric("NIM", nim)
         col3.metric("Kemajuan Kelas", "70%")
         st.progress(0.7)
 
@@ -99,13 +99,11 @@ else: # Ini adalah blok utama aplikasi setelah login berhasil (dari app_lms_fina
             st.success(f"File '{uploaded.name}' berhasil diunggah!")
 
     elif menu == "Prediksi Dropout":
-        # Seluruh blok ini disalin dari app_lms_final.py
         st.subheader("📊 Hasil Prediksi Dropout")
         mahasiswa = df[df["Nama"] == nama]
 
         if not mahasiswa.empty:
-            # Memilih fitur untuk prediksi, menghapus kolom yang tidak relevan.
-            # Asumsi dataset_mahasiswa_812_with_nim.csv digunakan.
+            # Drop kolom yang tidak digunakan untuk prediksi, sesuaikan jika nama kolom berbeda
             X = mahasiswa.drop(columns=["ID Mahasiswa", "Nama", "NIM", "dropout"])
             proba = model.predict_proba(X)[0][1]
             pred = model.predict(X)[0]
@@ -145,11 +143,3 @@ else: # Ini adalah blok utama aplikasi setelah login berhasil (dari app_lms_fina
 
         else:
             st.warning("Data mahasiswa tidak ditemukan.")
-
-# Bagian else dari app_lms (4).py untuk kasus login gagal
-# Namun, karena session state dari app_lms_final.py sudah menangani ini,
-# blok ini kemungkinan tidak akan tercapai dalam alur yang baru.
-# Saya akan tinggalkan sebagai komentar jika Anda memerlukannya.
-# else:
-#    st.title("🎓 LMS Mahasiswa")
-#    st.warning("Nama atau NIM tidak cocok. Silakan login kembali.")
