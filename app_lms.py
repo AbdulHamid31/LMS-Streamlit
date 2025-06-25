@@ -1,15 +1,13 @@
 import streamlit as st
 import pandas as pd
-import pickle
-import shap
-import matplotlib.pyplot as plt
 
 st.set_page_config(page_title="LMS Mahasiswa", layout="wide")
 
 # Load dataset mahasiswa
 @st.cache_data
 def load_data():
-    return pd.read_csv("dataset_mahasiswa_812.csv")
+    df = pd.read_csv("dataset_mahasiswa_812.csv")
+    return df
 
 df = load_data()
 
@@ -22,12 +20,12 @@ nim_input = st.sidebar.text_input("Masukkan NIM Mahasiswa")
 # Validasi Nama & NIM
 valid_mahasiswa = df[df["Nama"] == nama]
 if not valid_mahasiswa.empty:
-    nim_terdaftar = str(valid_mahasiswa.iloc[0]["ID Mahasiswa"])
+    nim_terdaftar = str(valid_mahasiswa.iloc[0]["ID Mahasiswa"])  # dianggap NIM
     login_berhasil = (nim_input == nim_terdaftar)
 else:
     login_berhasil = False
 
-# Jika login berhasil
+# ✅ Jika login berhasil
 if login_berhasil:
     st.title(f"🎓 LMS Mahasiswa - {nama}")
     menu = st.sidebar.radio("Navigasi", ["Beranda", "Materi", "Tugas", "Prediksi Dropout"])
@@ -66,53 +64,32 @@ if login_berhasil:
     elif menu == "Prediksi Dropout":
         st.subheader("📊 Prediksi Dropout Mahasiswa (Simulasi)")
 
-        try:
-            # Load model
-            with open("model_xgb.pkl", "rb") as f:
-                model = pickle.load(f)
+        # 📌 Probabilitas Dropout - angkanya bisa kamu ambil dari model
+        st.markdown("## Probabilitas Dropout")
+        st.markdown("<h1 style='font-size: 48px;'>1.16%</h1>", unsafe_allow_html=True)
 
-            # Ambil data mahasiswa
-            mahasiswa = valid_mahasiswa.iloc[0]
-            fitur_input = pd.DataFrame([{
-                "total_login": mahasiswa["total_login"],
-                "materi_selesai": mahasiswa["materi_selesai"],
-                "ipk": mahasiswa["ipk"],
-                "durasi_akses": mahasiswa["durasi_akses"]
-            }])
+        st.success("✅ Mahasiswa ini sangat kecil kemungkinannya untuk dropout.")
 
-            # Prediksi probabilitas dropout
-            proba = model.predict_proba(fitur_input)[0][1] * 100
+        # 🧠 Fitur yang mempengaruhi prediksi
+        st.markdown("### Fitur yang mempengaruhi prediksi:")
+        fitur_utama = [
+            "- Total Login: 43",
+            "- Materi Selesai: 91",
+            "- IPK: < 2.5",
+            "- Durasi Akses: 58.6 jam"
+        ]
+        st.markdown("\n".join(fitur_utama))
 
-            # Tampilkan hasil
-            st.markdown("## Probabilitas Dropout")
-            st.markdown(f"<h1 style='font-size: 48px;'>{proba:.2f}%</h1>", unsafe_allow_html=True)
+      # Interpretasi dengan SHAP
+        st.subheader("Penjelasan Prediksi (Visualisasi SHAP)")
+        explainer = shap.Explainer(model)
+        shap_values = explainer(X)
 
-            if proba < 20:
-                st.success("✅ Mahasiswa ini sangat kecil kemungkinannya untuk dropout.")
-            elif proba < 50:
-                st.warning("⚠️ Mahasiswa ini memiliki kemungkinan sedang untuk dropout.")
-            else:
-                st.error("❌ Mahasiswa ini memiliki risiko tinggi untuk dropout.")
+        shap.plots.waterfall(shap_values[0])
+        st.pyplot(plt.gcf())
 
-            # Fitur yang mempengaruhi prediksi
-            st.markdown("### Fitur yang mempengaruhi prediksi:")
-            st.markdown(f"- Total Login: {mahasiswa['total_login']}")
-            st.markdown(f"- Materi Selesai: {mahasiswa['materi_selesai']}")
-            st.markdown(f"- IPK: {mahasiswa['ipk']}")
-            st.markdown(f"- Durasi Akses: {mahasiswa['durasi_akses']} jam")
+        import matplotlib.pyplot as plt
 
-            # SHAP Visualisasi
-            st.subheader("Penjelasan Prediksi (Visualisasi SHAP)")
-
-            explainer = shap.Explainer(model)
-            shap_values = explainer(fitur_input)
-
-            shap.plots.waterfall(shap_values[0], show=False)
-            st.pyplot(plt.gcf())
-            plt.clf()
-
-        except Exception as e:
-            st.error(f"Terjadi kesalahan saat prediksi: {e}")
 
 else:
     st.title("🎓 LMS Mahasiswa")
