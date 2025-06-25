@@ -1,32 +1,13 @@
 import streamlit as st
 import pandas as pd
-import shap
-import matplotlib.pyplot as plt
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
-import numpy as np
 
-# Konfigurasi halaman
 st.set_page_config(page_title="LMS Mahasiswa", layout="wide")
 
 # Load dataset mahasiswa
 @st.cache_data
 def load_data():
-    try:
-        df = pd.read_csv("dataset_mahasiswa_812.csv")
-        
-        # Konversi status akademik ke numerik
-        ipk_mapping = {
-            'IPK < 2.5': 0,
-            'IPK 2.5–3.0': 1,
-            'IPK > 3.0': 2
-        }
-        df['status_akademik_numerik'] = df['status_akademik_terakhir'].map(ipk_mapping)
-        
-        return df
-    except Exception as e:
-        st.error(f"Error loading data: {str(e)}")
-        return pd.DataFrame()
+    df = pd.read_csv("dataset_mahasiswa_812.csv")
+    return df
 
 df = load_data()
 
@@ -39,7 +20,7 @@ nim_input = st.sidebar.text_input("Masukkan NIM Mahasiswa")
 # Validasi Nama & NIM
 valid_mahasiswa = df[df["Nama"] == nama]
 if not valid_mahasiswa.empty:
-    nim_terdaftar = str(valid_mahasiswa.iloc[0]["ID Mahasiswa"])
+    nim_terdaftar = str(valid_mahasiswa.iloc[0]["ID Mahasiswa"])  # dianggap NIM
     login_berhasil = (nim_input == nim_terdaftar)
 else:
     login_berhasil = False
@@ -53,76 +34,62 @@ if login_berhasil:
         st.subheader(f"👋 Selamat Datang, {nama}!")
         col1, col2, col3 = st.columns(3)
         col1.metric("Status Login", "Aktif")
-        
-        # Ambil data mahasiswa yang login
-        mhs_data = valid_mahasiswa.iloc[0]
-        
-        # Tampilkan IPK sesuai mapping
-        ipk_status = mhs_data["status_akademik_terakhir"]
-        col2.metric("Status Akademik", ipk_status)
-        
-        # Hitung progress berdasarkan materi selesai
-        progress = mhs_data["materi_selesai"] / 100
-        col3.metric("Materi Selesai", f"{mhs_data['materi_selesai']}%")
-        st.progress(progress)
+        col2.metric("IPK Terakhir", "3.25")
+        col3.metric("Kemajuan Kelas", "70%")
+        st.progress(0.7)
 
     elif menu == "Materi":
         st.subheader("📘 Materi Pembelajaran")
-        with st.expander("Modul 1 - Dasar Pemrograman"):
-            st.markdown("📄 Pengantar Python dan Algoritma")
-        with st.expander("Modul 2 - Analisis Data"):
-            st.markdown("🧠 Statistika Dasar dan Visualisasi Data")
-        with st.expander("Modul 3 - Machine Learning"):
-            st.markdown("📊 Model Prediktif dan Evaluasi")
+        with st.expander("Modul 1"):
+            st.markdown("📄 Pengantar Data")
+        with st.expander("Modul 2"):
+            st.markdown("🧠 Machine Learning Dasar")
+        with st.expander("Modul 3"):
+            st.markdown("📊 Evaluasi Model")
 
     elif menu == "Tugas":
         st.subheader("📝 Daftar Tugas")
         tugas_data = pd.DataFrame({
-            "Judul": ["Tugas 1 - Analisis Eksplorasi", "Tugas 2 - Model Prediksi", "Tugas 3 - Presentasi"],
+            "Judul": ["Tugas 1", "Tugas 2", "Tugas 3"],
             "Status": ["✅ Selesai", "❌ Belum", "❌ Belum"],
             "Deadline": ["2025-06-15", "2025-06-25", "2025-07-01"]
         })
         st.table(tugas_data)
 
         st.markdown("### 📎 Upload Tugas")
-        uploaded = st.file_uploader("Upload file tugas (.pdf/.docx/.ipynb)", type=["pdf", "docx", "ipynb"])
+        uploaded = st.file_uploader("Upload file tugas (.pdf/.docx)", type=["pdf", "docx"])
         if uploaded:
             st.success(f"File '{uploaded.name}' berhasil diunggah!")
 
     elif menu == "Prediksi Dropout":
-        st.subheader("📊 Hasil Prediksi Dropout")
-        mahasiswa = df[df["Nama"] == nama]
+        st.subheader("📊 Prediksi Dropout Mahasiswa (Simulasi)")
 
-        if not mahasiswa.empty:
-            X = mahasiswa.drop(columns=["ID Mahasiswa", "Nama", "NIM", "dropout"])
-            proba = model.predict_proba(X)[0][1]
-            pred = model.predict(X)[0]
+        # 📌 Probabilitas Dropout - angkanya bisa kamu ambil dari model
+        st.markdown("## Probabilitas Dropout")
+        st.markdown("<h1 style='font-size: 48px;'>1.16%</h1>", unsafe_allow_html=True)
 
-            st.metric("Probabilitas Dropout", f"{proba:.2%}")
-            if pred == 1:
-                st.error("❌ Mahasiswa ini diprediksi berisiko dropout.")
-            else:
-                st.success("✅ Mahasiswa ini diprediksi tidak dropout.")
+        st.success("✅ Mahasiswa ini sangat kecil kemungkinannya untuk dropout.")
 
-            st.markdown("---")
-            st.subheader("📈 Visualisasi SHAP (Waterfall Plot)")
+        # 🧠 Fitur yang mempengaruhi prediksi
+        st.markdown("### Fitur yang mempengaruhi prediksi:")
+        fitur_utama = [
+            "- Total Login: 43",
+            "- Materi Selesai: 91",
+            "- IPK: < 2.5",
+            "- Durasi Akses: 58.6 jam"
+        ]
+        st.markdown("\n".join(fitur_utama))
 
-            explainer = shap.Explainer(model)
-            shap_values = explainer(X)
-            shap.plots.waterfall(shap_values[0])
-            st.pyplot(plt.gcf())
-            plt.clf()
+      # Interpretasi dengan SHAP
+        st.subheader("Penjelasan Prediksi (Visualisasi SHAP)")
+        explainer = shap.Explainer(model)
+        shap_values = explainer(X)
 
-            st.markdown("---")
-            st.subheader("📊 Distribusi Dropout Keseluruhan")
-            dropout_counts = df['dropout'].value_counts()
-            labels = ['Tidak Dropout', 'Dropout']
-            colors = ['#28a745', '#dc3545']
+        shap.plots.waterfall(shap_values[0])
+        st.pyplot(plt.gcf())
 
-            fig, ax = plt.subplots()
-            ax.pie(dropout_counts, labels=labels, autopct='%1.1f%%', startangle=90, colors=colors)
-            ax.axis('equal')
-            st.pyplot(fig)
+        import matplotlib.pyplot as plt
+
 
 else:
     st.title("🎓 LMS Mahasiswa")
