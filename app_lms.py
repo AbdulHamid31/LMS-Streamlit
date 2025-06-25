@@ -61,7 +61,7 @@ if login_berhasil:
         if uploaded:
             st.success(f"File '{uploaded.name}' berhasil diunggah!")
 
-      elif menu == "Prediksi Dropout":
+    elif menu == "Prediksi Dropout":
         st.subheader("📊 Prediksi Dropout Mahasiswa (Simulasi)")
 
         # 📌 Probabilitas Dropout - angkanya bisa kamu ambil dari model
